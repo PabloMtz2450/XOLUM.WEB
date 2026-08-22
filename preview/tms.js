@@ -1,163 +1,133 @@
 (() => {
   'use strict';
 
-  const root = document.querySelector('[data-tms-app]');
-  if (!root) return;
+  const ACCESS_KEY = 'xolum_tms_demo_access';
+  const LEAD_KEY = 'xolum_tms_demo_lead';
+  const TEST_CODE_SHA256 = '583b4067a3901dfc579a9852ec0be772373dc4c6a9ae0ac88bb2c93d836c176f';
+  const app = document.querySelector('[data-tms-app]');
+  if (!app) return;
 
-  const state = {
-    role: 'Torre de Control', activeModule: 'inicio', filter: 'todas',
-    kpis: { routes:48, deliveries:142, ontime:91 },
-    routes: [
-      {id:'R-1048',unit:'U-18',driver:'Carlos M.',client:'ABC Distribuidora',status:'riesgo',eta:'13:42',progress:68,stops:8,done:5},
-      {id:'R-1052',unit:'U-32',driver:'Juan R.',client:'Comercial del Norte',status:'incidente',eta:'14:05',progress:43,stops:7,done:3},
-      {id:'R-1039',unit:'U-07',driver:'María P.',client:'Industrial Delta',status:'en-ruta',eta:'12:55',progress:81,stops:9,done:7},
-      {id:'R-1055',unit:'U-21',driver:'Luis G.',client:'Pharma Corp',status:'en-ruta',eta:'15:10',progress:57,stops:6,done:3},
-      {id:'R-1061',unit:'U-11',driver:'Ana V.',client:'Grupo Atlas',status:'sin-senal',eta:'15:35',progress:36,stops:5,done:2}
-    ],
-    deliveries: [
-      {id:'E-88021',route:'R-1048',client:'ABC Distribuidora',window:'13:20 - 13:40',status:'en-ruta',pod:false,evidence:0},
-      {id:'E-88022',route:'R-1052',client:'Comercial del Norte',window:'13:30 - 14:00',status:'excepcion',pod:false,evidence:2},
-      {id:'E-88023',route:'R-1039',client:'Industrial Delta',window:'12:30 - 13:00',status:'entregado',pod:true,evidence:4},
-      {id:'E-88024',route:'R-1055',client:'Pharma Corp',window:'15:00 - 15:30',status:'en-ruta',pod:false,evidence:1},
-      {id:'E-88025',route:'R-1061',client:'Grupo Atlas',window:'15:15 - 15:45',status:'sin-senal',pod:false,evidence:0}
-    ],
-    exceptions: [
-      {id:1,severity:'alta',title:'Alerta SafeRoute',detail:'Unidad U-32 · Parada prolongada en zona de riesgo',action:'Atender',status:'abierta'},
-      {id:2,severity:'alta',title:'Entrega fuera de ventana',detail:'R-1048 · Cliente: ABC Distribuidora · ETA +2h 15m',action:'Reasignar',status:'abierta'},
-      {id:3,severity:'media',title:'Evidencia incompleta',detail:'R-1052 · Faltan 2 archivos POD',action:'Revisar',status:'abierta'},
-      {id:4,severity:'media',title:'Desviación de ruta',detail:'R-1039 · Desvío detectado de 4.2 km',action:'Ver ruta',status:'abierta'},
-      {id:5,severity:'baja',title:'Reprogramación solicitada',detail:'R-1055 · Cliente solicita nueva ventana',action:'Gestionar',status:'abierta'},
-      {id:6,severity:'media',title:'Unidad sin señal',detail:'R-1061 · Último ping hace 8 min',action:'Rastrear',status:'abierta'},
-      {id:7,severity:'baja',title:'Carta Porte por validar',detail:'R-1048 · Validación documental pendiente',action:'Validar',status:'abierta'}
-    ],
-    incident:{active:true,attended:false,unit:'U-32',driver:'Juan R.',since:Date.now()-18*60*1000},
-    activity:[
-      {time:'10:21',text:'Sistema detectó desviación en R-1039'},
-      {time:'10:18',text:'SafeRoute elevó alerta de U-32'},
-      {time:'10:12',text:'POD completado para E-88023'}
-    ]
+  const loadCore = () => {
+    if (document.querySelector('script[data-tms-core]')) return;
+    const script = document.createElement('script');
+    script.src = 'tms-core.js';
+    script.defer = true;
+    script.dataset.tmsCore = 'true';
+    document.body.appendChild(script);
   };
 
-  const $ = s => root.querySelector(s);
-  const $$ = s => [...root.querySelectorAll(s)];
-  const esc = v => String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-  const labelStatus = s => ({'en-ruta':'En ruta','riesgo':'Riesgo','incidente':'Incidente','sin-senal':'Sin señal','entregado':'Entregado','excepcion':'Excepción'})[s] || s;
-  const openExceptions = () => state.exceptions.filter(x=>x.status==='abierta');
+  const grant = () => {
+    app.hidden = false;
+    const gate = document.querySelector('[data-demo-gate]');
+    if (gate) gate.remove();
+    loadCore();
+  };
 
-  function addActivity(text){
-    const now=new Date();
-    state.activity.unshift({time:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),text});
-    state.activity=state.activity.slice(0,8);
-    renderActivity();
+  if (sessionStorage.getItem(ACCESS_KEY) === 'granted') {
+    grant();
+    return;
   }
 
-  function renderClock(){
-    const el=$('[data-live-clock]');
-    if(el) el.textContent=new Date().toLocaleString('es-MX',{weekday:'long',day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  app.hidden = true;
+  const style = document.createElement('style');
+  style.textContent = `
+    .xgate{min-height:100vh;background:#070a0e;color:#f5f7fa;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:28px 18px 60px}
+    .xgate *{box-sizing:border-box}.xgate-shell{width:min(1180px,100%);margin:auto}.xgate-top{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:52px}
+    .xgate-brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit}.xgate-brand img{width:48px;height:48px;object-fit:contain}.xgate-brand b{font-size:20px}.xgate-brand b span{color:#79d431}.xgate-brand small{display:block;color:#8f99a5;font-size:11px;margin-top:2px}
+    .xgate-back{border:1px solid #2a343e;border-radius:999px;padding:10px 15px;text-decoration:none;color:#dce2e8;font-size:12px;font-weight:800}
+    .xgate-grid{display:grid;grid-template-columns:minmax(0,.82fr) minmax(480px,1.18fr);gap:48px;align-items:start}.xgate-copy{padding-top:24px}.xgate-kicker{font-size:11px;letter-spacing:.16em;color:#79d431;font-weight:900;text-transform:uppercase}.xgate h1{font-size:clamp(46px,6vw,82px);line-height:.94;letter-spacing:-.06em;margin:16px 0 22px}.xgate-copy>p{color:#9ba5b0;line-height:1.65;font-size:16px;max-width:560px}
+    .xgate-points{display:grid;gap:11px;margin-top:28px}.xgate-point{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;color:#cbd2d9;font-size:13px}.xgate-point i{width:24px;height:24px;border:1px solid #395022;border-radius:50%;display:grid;place-items:center;color:#79d431;font-style:normal;font-size:11px}
+    .xgate-card{background:linear-gradient(155deg,#151b22,#0e1319);border:1px solid #27313b;border-radius:22px;padding:26px;box-shadow:0 30px 90px rgba(0,0,0,.35)}.xgate-card h2{font-size:25px;margin:0 0 7px}.xgate-card>p{color:#8e98a4;font-size:12px;line-height:1.55;margin:0 0 22px}.xgate-form{display:grid;grid-template-columns:1fr 1fr;gap:13px}.xgate-field{display:grid;gap:6px}.xgate-field.full{grid-column:1/-1}.xgate-field label{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:#aeb7c1;font-weight:800}.xgate input,.xgate select,.xgate textarea{width:100%;border:1px solid #34404b;border-radius:9px;background:#090d12;color:#f4f7fa;padding:11px 12px;font:inherit;font-size:13px;outline:none}.xgate textarea{min-height:82px;resize:vertical}.xgate input:focus,.xgate select:focus,.xgate textarea:focus{border-color:#5b86ff;box-shadow:0 0 0 3px rgba(91,134,255,.12)}
+    .xgate-consent{grid-column:1/-1;display:flex;gap:9px;align-items:flex-start;color:#98a2ad;font-size:11px;line-height:1.45}.xgate-consent input{width:17px;height:17px;margin:1px 0 0;flex:0 0 auto}.xgate-submit{grid-column:1/-1;border:0;border-radius:10px;background:#79d431;color:#0b1008;padding:13px 16px;font-weight:950;font-size:13px}.xgate-submit:hover{filter:brightness(1.06)}.xgate-submit:disabled{opacity:.55;cursor:wait}.xgate-msg{grid-column:1/-1;min-height:18px;font-size:11px;color:#ff6b63}.xgate-note{grid-column:1/-1;border-top:1px solid #27313b;padding-top:13px;color:#697580;font-size:10px;line-height:1.5}.xgate-sales{margin-top:24px;color:#87919c;font-size:11px}.xgate-sales a{color:#fff;font-weight:800}
+    @media(max-width:900px){.xgate-grid{grid-template-columns:1fr}.xgate-copy{padding-top:0}.xgate-card{padding:20px}.xgate-top{margin-bottom:28px}}@media(max-width:620px){.xgate-form{grid-template-columns:1fr}.xgate-field.full,.xgate-consent,.xgate-submit,.xgate-msg,.xgate-note{grid-column:auto}.xgate h1{font-size:48px}.xgate-back{display:none}}
+  `;
+  document.head.appendChild(style);
+
+  const gate = document.createElement('section');
+  gate.className = 'xgate';
+  gate.dataset.demoGate = 'true';
+  gate.innerHTML = `
+    <div class="xgate-shell">
+      <div class="xgate-top">
+        <a class="xgate-brand" href="tms.html"><img src="assets/brand/XOLUM_Icon_64x64.png" alt="XOLUM"><div><b>TMS <span>XOLUM</span></b><small>Demo privada · Acceso por invitación</small></div></a>
+        <a class="xgate-back" href="tms.html">VOLVER A PRESENTACIÓN</a>
+      </div>
+      <div class="xgate-grid">
+        <div class="xgate-copy">
+          <div class="xgate-kicker">DEMO INTERACTIVA / ACCESO CONTROLADO</div>
+          <h1>Tu operación merece algo más que otra pantalla.</h1>
+          <p>La demo permite recorrer una Torre de Control conceptual, rutas, entregas, POD, excepciones, tracking y SafeRoute. Antes de entrar necesitamos entender el tamaño y contexto de tu operación para que la conversación comercial tenga sentido.</p>
+          <div class="xgate-points">
+            <div class="xgate-point"><i>01</i><span>Información de contacto y empresa.</span></div>
+            <div class="xgate-point"><i>02</i><span>Escala de flota, entregas y cobertura geográfica.</span></div>
+            <div class="xgate-point"><i>03</i><span>Sistemas actuales y principal fricción operativa.</span></div>
+            <div class="xgate-point"><i>04</i><span>Código de invitación asignado por XOLUM.</span></div>
+          </div>
+          <div class="xgate-sales">¿Aún no tienes código? <a href="mailto:contacto@xolum.com.mx?subject=Solicitud%20de%20acceso%20-%20Demo%20TMS%20XOLUM">Solicitar acceso comercial ↗</a></div>
+        </div>
+        <div class="xgate-card">
+          <h2>Solicita / valida tu acceso</h2>
+          <p>Completa todos los datos marcados. La demo utiliza información simulada y no expone operación real.</p>
+          <form class="xgate-form" data-gate-form novalidate>
+            <div class="xgate-field"><label for="g-name">Nombre completo *</label><input id="g-name" name="name" autocomplete="name" required minlength="3"></div>
+            <div class="xgate-field"><label for="g-role">Puesto / responsabilidad *</label><input id="g-role" name="role" required placeholder="Logística, tráfico, operaciones..."></div>
+            <div class="xgate-field"><label for="g-company">Empresa *</label><input id="g-company" name="company" autocomplete="organization" required minlength="2"></div>
+            <div class="xgate-field"><label for="g-email">Correo empresarial *</label><input id="g-email" name="email" type="email" autocomplete="email" required></div>
+            <div class="xgate-field"><label for="g-phone">Teléfono *</label><input id="g-phone" name="phone" type="tel" autocomplete="tel" required minlength="8"></div>
+            <div class="xgate-field"><label for="g-industry">Giro / industria *</label><input id="g-industry" name="industry" required placeholder="Retail, manufactura, 3PL..."></div>
+            <div class="xgate-field"><label for="g-model">Modelo de operación *</label><select id="g-model" name="model" required><option value="">Selecciona</option><option>Flota propia</option><option>Transportistas / 3PL</option><option>Operación mixta</option><option>Última milla tercerizada</option></select></div>
+            <div class="xgate-field"><label for="g-units">Unidades aproximadas *</label><select id="g-units" name="units" required><option value="">Selecciona</option><option>1 - 10</option><option>11 - 25</option><option>26 - 50</option><option>51 - 100</option><option>101 - 250</option><option>251 - 500</option><option>Más de 500</option></select></div>
+            <div class="xgate-field"><label for="g-stops">Puntos de entrega / día *</label><select id="g-stops" name="stops" required><option value="">Selecciona</option><option>1 - 50</option><option>51 - 150</option><option>151 - 500</option><option>501 - 1,000</option><option>1,001 - 5,000</option><option>Más de 5,000</option></select></div>
+            <div class="xgate-field"><label for="g-horizon">Horizonte de implementación *</label><select id="g-horizon" name="horizon" required><option value="">Selecciona</option><option>Inmediato / 0-3 meses</option><option>3-6 meses</option><option>6-12 meses</option><option>Exploración / más de 12 meses</option></select></div>
+            <div class="xgate-field full"><label for="g-cities">Principales ciudades, municipios o zonas de entrega *</label><input id="g-cities" name="cities" required placeholder="Ej. CDMX, Monterrey, Guadalajara, Querétaro..."></div>
+            <div class="xgate-field full"><label for="g-stack">ERP / WMS / TMS / sistemas actuales</label><input id="g-stack" name="stack" placeholder="SAP, Oracle, Dynamics, Excel, desarrollo propio..."></div>
+            <div class="xgate-field full"><label for="g-pain">Principal reto operativo *</label><textarea id="g-pain" name="pain" required minlength="10" placeholder="¿Qué te duele hoy? Rutas, evidencias, Carta Porte, seguimiento, reintentos, costos, SLA..."></textarea></div>
+            <div class="xgate-field"><label for="g-fiscal">¿Requiere CFDI / Carta Porte? *</label><select id="g-fiscal" name="fiscal" required><option value="">Selecciona</option><option>Sí, es crítico</option><option>Sí, en algunos viajes</option><option>No actualmente</option><option>Por definir</option></select></div>
+            <div class="xgate-field"><label for="g-code">Código de invitación *</label><input id="g-code" name="code" required autocomplete="one-time-code" spellcheck="false"></div>
+            <label class="xgate-consent"><input type="checkbox" name="consent" required><span>Confirmo que los datos son de contacto comercial y autorizo su uso para evaluar una posible implementación de TMS XOLUM.</span></label>
+            <button class="xgate-submit" type="submit">VALIDAR Y ENTRAR A LA DEMO →</button>
+            <div class="xgate-msg" data-gate-message aria-live="polite"></div>
+            <div class="xgate-note">Entorno de prueba: el formulario se valida en el navegador y los datos permanecen únicamente durante esta sesión. En producción, invitaciones y prospectos se validarán y registrarán del lado servidor.</div>
+          </form>
+        </div>
+      </div>
+    </div>`;
+  document.body.prepend(gate);
+
+  const form = gate.querySelector('[data-gate-form]');
+  const message = gate.querySelector('[data-gate-message]');
+
+  async function sha256(value) {
+    const data = new TextEncoder().encode(value);
+    const digest = await crypto.subtle.digest('SHA-256', data);
+    return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
-  function renderKPIs(){
-    const delivered=state.deliveries.filter(d=>d.status==='entregado').length;
-    const values={routes:state.kpis.routes,deliveries:state.kpis.deliveries,ontime:state.kpis.ontime+'%',exceptions:openExceptions().length,incidents:(state.incident.active&&!state.incident.attended)?1:0,progress:Math.round(delivered/state.deliveries.length*100)+'%'};
-    Object.entries(values).forEach(([k,v])=>$$(`[data-kpi="${k}"]`).forEach(el=>el.textContent=v));
-  }
-
-  function renderExceptions(){
-    const list=openExceptions();
-    const html=list.length?list.map(x=>`<article class="exception sev-${x.severity}"><div class="exc-icon">${x.severity==='alta'?'!':x.severity==='media'?'△':'i'}</div><div><b>${esc(x.title)}</b><small>${esc(x.detail)}</small></div><div class="impact">${x.severity==='alta'?'Alto impacto':x.severity==='media'?'Impacto medio':'Bajo impacto'}</div><button type="button" data-exception-action="${x.id}">${esc(x.action)}</button></article>`).join(''):'<div class="tms-empty">Sin excepciones abiertas. Operación estable.</div>';
-    $$('[data-exception-list]').forEach(box=>box.innerHTML=html);
-  }
-
-  function renderRoutes(){
-    const box=$('[data-route-list]'); if(!box) return;
-    const list=state.routes.filter(r=>state.filter==='todas'||r.status===state.filter);
-    box.innerHTML=list.length?list.map(r=>`<button type="button" class="route-row" data-route-id="${r.id}"><span><b>${r.id}</b><small>${esc(r.client)}</small></span><span>${r.unit}<small>${esc(r.driver)}</small></span><span><i class="status-dot ${r.status}"></i>${labelStatus(r.status)}</span><span>${r.done}/${r.stops}<small>paradas</small></span><span>${r.progress}%<small>ETA ${r.eta}</small></span></button>`).join(''):'<div class="tms-empty">No hay rutas con este filtro.</div>';
-  }
-
-  function renderDeliveries(){
-    const box=$('[data-delivery-list]'); if(!box) return;
-    box.innerHTML=state.deliveries.map(d=>`<article class="delivery-row"><div><b>${d.id}</b><small>${esc(d.client)} · ${d.route}</small></div><div><span>${d.window}</span><small>ventana</small></div><div><span class="delivery-status ${d.status}">${labelStatus(d.status)}</span><small>${d.evidence}/4 evidencias</small></div><button type="button" data-pod="${d.id}" ${d.pod?'disabled':''}>${d.pod?'POD completo':'Confirmar POD'}</button></article>`).join('');
-  }
-
-  function renderSafeRoute(){
-    const status=$('[data-incident-status]'),btn=$('[data-attend-incident]');
-    const sosButtons=$$('[data-sos]');
-    if(!status||!btn) return;
-    if(!state.incident.active){
-      status.innerHTML='<b class="green">SIN INCIDENTES ACTIVOS</b><p>SafeRoute opera en modo preventivo.</p>';
-      btn.disabled=true;btn.textContent='Sin incidente';sosButtons.forEach(s=>s.classList.remove('pulse'));return;
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    message.textContent = '';
+    if (!form.reportValidity()) return;
+    const submit = form.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    submit.textContent = 'VALIDANDO...';
+    try {
+      const data = Object.fromEntries(new FormData(form).entries());
+      const normalizedCode = String(data.code || '').trim().toUpperCase();
+      const digest = await sha256(normalizedCode);
+      if (digest !== TEST_CODE_SHA256) {
+        message.textContent = 'Código de invitación no válido. Verifica el código asignado por XOLUM.';
+        return;
+      }
+      delete data.code;
+      delete data.consent;
+      sessionStorage.setItem(LEAD_KEY, JSON.stringify({...data, qualifiedAt: new Date().toISOString()}));
+      sessionStorage.setItem(ACCESS_KEY, 'granted');
+      grant();
+    } catch (error) {
+      message.textContent = 'No fue posible validar el acceso en este navegador. Intenta nuevamente.';
+    } finally {
+      submit.disabled = false;
+      submit.textContent = 'VALIDAR Y ENTRAR A LA DEMO →';
     }
-    if(state.incident.attended){
-      status.innerHTML=`<b class="green">INCIDENTE EN ATENCIÓN</b><p>${state.incident.unit} · ${esc(state.incident.driver)}<br>Responsable asignado: Torre de Control</p>`;
-      btn.disabled=true;btn.textContent='Atendiendo';sosButtons.forEach(s=>s.classList.remove('pulse'));
-    }else{
-      const mins=Math.max(1,Math.floor((Date.now()-state.incident.since)/60000));
-      status.innerHTML=`<b class="red">INCIDENTE CRÍTICO ACTIVO</b><p>${state.incident.unit} · Operador: ${esc(state.incident.driver)}<br>${mins} min · Última ubicación disponible</p>`;
-      btn.disabled=false;btn.textContent='Atender';sosButtons.forEach(s=>s.classList.add('pulse'));
-    }
-  }
-
-  function renderActivity(){
-    const box=$('[data-activity]'); if(!box) return;
-    box.innerHTML=state.activity.map(a=>`<div class="activity-row"><time>${a.time}</time><span>${esc(a.text)}</span></div>`).join('');
-  }
-
-  function showRoute(id){
-    const r=state.routes.find(x=>x.id===id); if(!r) return;
-    const drawer=$('[data-route-detail]'); if(!drawer) return;
-    drawer.innerHTML=`<div class="drawer-head"><div><small>RUTA SELECCIONADA</small><h3>${r.id} · ${r.unit}</h3></div><button type="button" data-close-drawer>×</button></div><div class="drawer-grid"><div><span>Cliente</span><b>${esc(r.client)}</b></div><div><span>Operador</span><b>${esc(r.driver)}</b></div><div><span>Estado</span><b>${labelStatus(r.status)}</b></div><div><span>ETA</span><b>${r.eta}</b></div></div><div class="progress"><i style="width:${r.progress}%"></i></div><p>${r.done} de ${r.stops} paradas completadas. Progreso operacional ${r.progress}%.</p><div class="drawer-actions"><button type="button" data-route-action="contact">Contactar operador</button><button type="button" data-route-action="replan">Replanificar</button></div>`;
-    drawer.dataset.open='true';addActivity(`Ruta ${r.id} abierta en Torre de Control`);
-  }
-
-  function renderModule(){
-    $$('.module-view').forEach(v=>v.hidden=v.dataset.module!==state.activeModule);
-    $$('button[data-module]').forEach(b=>b.classList.toggle('active',b.dataset.module===state.activeModule));
-    const title=$('[data-module-title]');
-    if(title) title.textContent=({inicio:'Torre de Control',rutas:'Rutas y unidades',entregas:'Entregas y POD',excepciones:'Gestión de excepciones',tracking:'Tracking operativo',saferoute:'SafeRoute · Emergencias',reportes:'Reportes ejecutivos',flota:'Flota',conductores:'Conductores',clientes:'Clientes',configuracion:'Configuración'})[state.activeModule]||'TMS XOLUM';
-  }
-
-  function setRole(role){
-    state.role=role;$$('[data-role-label]').forEach(el=>el.textContent=role);
-    const restricted=role==='Cliente';$$('[data-admin-only]').forEach(el=>el.hidden=restricted);
-    if(restricted&&['saferoute','reportes','configuracion'].includes(state.activeModule)){state.activeModule='inicio';renderModule();}
-    addActivity(`Rol cambiado a ${role}`);
-  }
-
-  function tickSimulation(){
-    const delta=Math.random()>.5?1:-1;
-    if(Math.random()>.78) state.kpis.ontime=Math.min(98,Math.max(86,state.kpis.ontime+delta));
-    const route=state.routes[Math.floor(Math.random()*state.routes.length)];
-    if(route&&route.status==='en-ruta'&&route.progress<95) route.progress=Math.min(95,route.progress+1);
-    renderKPIs();renderRoutes();renderSafeRoute();
-  }
-
-  root.addEventListener('click',e=>{
-    const nav=e.target.closest('button[data-module]');
-    if(nav){e.preventDefault();state.activeModule=nav.dataset.module;renderModule();return;}
-
-    const exBtn=e.target.closest('[data-exception-action]');
-    if(exBtn){const ex=state.exceptions.find(x=>String(x.id)===exBtn.dataset.exceptionAction);if(ex){ex.status='resuelta';addActivity(`${ex.title}: ${ex.action} completado`);renderExceptions();renderKPIs();}return;}
-
-    const routeBtn=e.target.closest('[data-route-id]');if(routeBtn){showRoute(routeBtn.dataset.routeId);return;}
-    if(e.target.closest('[data-close-drawer]')){const d=$('[data-route-detail]');if(d)d.dataset.open='false';return;}
-
-    const ra=e.target.closest('[data-route-action]');if(ra){addActivity(ra.dataset.routeAction==='replan'?'Replanificación iniciada':'Contacto enviado al operador');return;}
-
-    const pod=e.target.closest('[data-pod]');
-    if(pod){const d=state.deliveries.find(x=>x.id===pod.dataset.pod);if(d&&!d.pod){d.pod=true;d.evidence=4;d.status='entregado';addActivity(`POD verificado al 100% para ${d.id}`);renderDeliveries();renderKPIs();}return;}
-
-    if(e.target.closest('[data-attend-incident]')){state.incident.attended=true;const ex=state.exceptions.find(x=>x.title==='Alerta SafeRoute'&&x.status==='abierta');if(ex)ex.status='resuelta';addActivity(`Incidente ${state.incident.unit} asignado a Torre de Control`);renderSafeRoute();renderExceptions();renderKPIs();return;}
-
-    if(e.target.closest('[data-sos]')){if(!state.incident.active||state.incident.attended){state.incident={active:true,attended:false,unit:'U-21',driver:'Luis G.',since:Date.now()};state.exceptions.unshift({id:Date.now(),severity:'alta',title:'SOS SafeRoute',detail:'U-21 · Alerta simulada generada desde demo',action:'Atender',status:'abierta'});addActivity('SOS SafeRoute simulado activado para U-21');renderSafeRoute();renderExceptions();renderKPIs();}return;}
-
-    if(e.target.closest('[data-refresh]')){tickSimulation();addActivity('Datos operativos actualizados manualmente');}
   });
-
-  root.addEventListener('change',e=>{
-    if(e.target.matches('[data-role-select]'))setRole(e.target.value);
-    if(e.target.matches('[data-route-filter]')){state.filter=e.target.value;renderRoutes();}
-  });
-
-  renderClock();renderKPIs();renderExceptions();renderRoutes();renderDeliveries();renderSafeRoute();renderActivity();renderModule();setRole(state.role);
-  setInterval(renderClock,1000);setInterval(tickSimulation,6000);
 })();
