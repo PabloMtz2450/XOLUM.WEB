@@ -3,7 +3,7 @@
   const access = sessionStorage.getItem('xolum_tms_demo_access');
   const gate = document.getElementById('gate');
   const app = document.getElementById('driverApp');
-  if (!access) { gate.hidden = false; return; }
+  if (access !== 'granted') { gate.hidden = false; return; }
   app.hidden = false;
 
   const state = {
