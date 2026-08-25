@@ -49,7 +49,7 @@
         <p>Sin formularios eternos. Usa tu código de invitación y entra directo a la operación: pedidos, planeación, rutas, Torre de Control y app del operador.</p>
         <form class="xgate-form" data-gate-form novalidate>
           <label for="g-code">Código de acceso</label>
-          <input id="g-code" name="code" required autocomplete="one-time-code" spellcheck="false" autofocus placeholder="XOLUM-TMS-DEMO-2026">
+          <input id="g-code" name="code" required autocomplete="one-time-code" spellcheck="false" autofocus placeholder="INGRESA TU CÓDIGO">
           <button type="submit">ENTRAR A LA DEMO →</button>
           <div class="xgate-msg" data-gate-message aria-live="polite"></div>
         </form>
