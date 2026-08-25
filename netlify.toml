@@ -1,0 +1,153 @@
+[build]
+  command = "bash tools/build-production.sh"
+  publish = ".xolum-prod/public"
+  edge_functions = ".xolum-prod/netlify/edge-functions"
+
+[functions]
+  directory = ".xolum-prod/netlify/functions"
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/api/master-data"
+  to = "/.netlify/functions/master-data"
+  status = 200
+
+[[redirects]]
+  from = "/api/b2b-access"
+  to = "/.netlify/functions/b2b-access"
+  status = 200
+
+[[redirects]]
+  from = "/api/catalog-access"
+  to = "/.netlify/functions/catalog-access"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/customer-config"
+  to = "/.netlify/functions/customer-config"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/orders"
+  to = "/.netlify/functions/orders"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/crm"
+  to = "/.netlify/functions/crm"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/operations"
+  to = "/.netlify/functions/operations"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/analytics"
+  to = "/.netlify/functions/analytics"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/quotes"
+  to = "/.netlify/functions/quotes"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/security-audit"
+  to = "/.netlify/functions/security-audit"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/security-migrate"
+  to = "/.netlify/functions/security-migrate"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/security-status"
+  to = "/.netlify/functions/security-status"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/session"
+  to = "/.netlify/functions/session"
+  status = 200
+  force = true
+
+[[edge_functions]]
+  function = "access-gate"
+  path = "/admin"
+
+[[edge_functions]]
+  function = "access-gate"
+  path = "/admin/*"
+
+[[edge_functions]]
+  function = "access-gate"
+  path = "/tienda/b2b/catalogo.html"
+
+[[edge_functions]]
+  function = "access-gate"
+  path = "/tienda/b2b/store.html"
+
+[[edge_functions]]
+  function = "access-gate"
+  path = "/tienda/b2b/cotizaciones.html"
+
+[[edge_functions]]
+  function = "access-gate"
+  path = "/tienda/b2b/autorizaciones.html"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "no-referrer"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=()"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Resource-Policy = "same-origin"
+
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Cache-Control = "no-store"
+
+[[headers]]
+  for = "/admin/*"
+  [headers.values]
+    Cache-Control = "no-store, max-age=0"
+    Pragma = "no-cache"
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+    Content-Security-Policy = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; script-src-elem 'self'; script-src-attr 'unsafe-inline'; upgrade-insecure-requests"
+
+[[headers]]
+  for = "/tienda/b2b/*"
+  [headers.values]
+    Cache-Control = "no-store, max-age=0"
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+    Content-Security-Policy = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; script-src-elem 'self'; script-src-attr 'unsafe-inline'; upgrade-insecure-requests"
+
+[[headers]]
+  for = "/tms-app.html"
+  [headers.values]
+    Cache-Control = "no-store, max-age=0"
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+    Content-Security-Policy = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data:; connect-src 'self'; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; form-action 'self'; upgrade-insecure-requests"
+
+[[headers]]
+  for = "/tms-driver.html"
+  [headers.values]
+    Cache-Control = "no-store, max-age=0"
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+    Content-Security-Policy = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data:; connect-src 'self'; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; form-action 'self'; upgrade-insecure-requests"
