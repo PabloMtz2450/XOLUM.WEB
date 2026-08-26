@@ -4,10 +4,11 @@
   "private": true,
   "description": "XOLUM production runtime assembled from a verified bundle and XOLUM.WEB overlays",
   "scripts": {
-    "build": "bash tools/build-production.sh"
+    "build": "node tools/build-production.mjs"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.12",
+    "adm-zip": "^0.5.16",
     "jose": "^6.1.0"
   }
 }
