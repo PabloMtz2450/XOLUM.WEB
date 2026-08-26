@@ -1,5 +1,5 @@
 [build]
-  command = "bash tools/build-production.sh"
+  command = "node tools/build-production.mjs"
   publish = ".xolum-prod/public"
   edge_functions = ".xolum-prod/netlify/edge-functions"
 
