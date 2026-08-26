@@ -8,14 +8,34 @@
   node_bundler = "esbuild"
 
 [[redirects]]
+  from = "/auth/login"
+  to = "/.netlify/functions/auth-login"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/auth/callback"
+  to = "/.netlify/functions/auth-callback"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/auth/logout"
+  to = "/.netlify/functions/auth-logout"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/master-data"
   to = "/.netlify/functions/master-data"
   status = 200
+  force = true
 
 [[redirects]]
   from = "/api/b2b-access"
   to = "/.netlify/functions/b2b-access"
   status = 200
+  force = true
 
 [[redirects]]
   from = "/api/catalog-access"
