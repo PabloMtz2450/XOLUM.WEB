@@ -1,3 +1,8 @@
+import { createDecipheriv } from "node:crypto";
+import { Buffer } from "node:buffer";
+import type { Context } from "@netlify/edge-functions";
+
+const COOKIE = "__Host-xolum_session";
 const ADMIN_ROLES = new Set(["SUPER_ADMIN", "ADMIN"]);
 const B2B_ROLES = new Set(["B2B_BUYER", "B2B_APPROVER", "SUPER_ADMIN", "ADMIN"]);
 
@@ -8,30 +13,45 @@ function loginRedirect(url: URL): Response {
   );
 }
 
-async function readSession(request: Request, url: URL) {
-  const cookie = request.headers.get("cookie") || "";
-  if (!cookie) return null;
-
+function sessionKey(): Buffer | null {
   try {
-    const response = await fetch(new URL("/api/session", url.origin), {
-      method: "GET",
-      headers: {
-        cookie,
-        "x-xolum-edge-session-check": "1",
-      },
-      redirect: "manual",
-    });
-
-    if (!response.ok) return null;
-    const payload = await response.json();
-    if (!payload?.ok || !payload?.authenticated || !payload?.user) return null;
-    return payload.user;
+    const raw = Netlify.env.get("XOLUM_SESSION_COOKIE_KEY") || "";
+    const key = Buffer.from(raw, "base64");
+    return key.length === 32 ? key : null;
   } catch {
     return null;
   }
 }
 
-export default async (request: Request) => {
+function verifySessionToken(token: string | undefined) {
+  try {
+    const [version, iv, ciphertext, tag] = String(token || "").split(".");
+    if (version !== "v1" || !iv || !ciphertext || !tag) return null;
+
+    const key = sessionKey();
+    if (!key) return null;
+
+    const decipher = createDecipheriv(
+      "aes-256-gcm",
+      key,
+      Buffer.from(iv, "base64url"),
+    );
+    decipher.setAuthTag(Buffer.from(tag, "base64url"));
+
+    const plaintext = Buffer.concat([
+      decipher.update(Buffer.from(ciphertext, "base64url")),
+      decipher.final(),
+    ]).toString("utf8");
+
+    const payload = JSON.parse(plaintext);
+    if (!payload?.exp || Date.now() / 1000 >= payload.exp) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+export default async (request: Request, context: Context) => {
   const url = new URL(request.url);
 
   const isAdmin = url.pathname === "/admin" || url.pathname.startsWith("/admin/");
@@ -42,17 +62,18 @@ export default async (request: Request) => {
     "/tienda/b2b/autorizaciones.html",
   ].includes(url.pathname);
 
-  // Esta Edge Function corre de forma global para usar una sola regla de Netlify,
-  // pero sólo consulta la sesión cuando la ruta realmente requiere protección.
+  // Una sola regla global evita exceder el límite de reglas Edge del plan.
+  // Las rutas públicas continúan sin trabajo criptográfico adicional.
   if (!isAdmin && !isB2B) return;
 
-  const user = await readSession(request, url);
+  const token = context.cookies.get(COOKIE);
+  const session = verifySessionToken(token);
 
-  if (isAdmin && !ADMIN_ROLES.has(user?.role)) {
+  if (isAdmin && !ADMIN_ROLES.has(session?.role)) {
     return loginRedirect(url);
   }
 
-  if (isB2B && !B2B_ROLES.has(user?.role)) {
+  if (isB2B && !B2B_ROLES.has(session?.role)) {
     return loginRedirect(url);
   }
 
