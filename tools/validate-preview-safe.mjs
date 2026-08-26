@@ -31,7 +31,7 @@ const nativeRoutes = {
 const checks = {
   preview_bound_to_exact_project: origin.includes('--euphonious-crisp-9e0050.netlify.app'),
   preview_origin_validated: origin.includes('Origen XOLUM no autorizado'),
-  no_legacy_function_rewrites: !toml.includes('/.netlify/functions/'),
+  no_legacy_function_rewrites: !/^\s*to\s*=\s*["']\/\.netlify\/functions\//m.test(toml),
 };
 
 for (const [file, route] of Object.entries(nativeRoutes)) {
