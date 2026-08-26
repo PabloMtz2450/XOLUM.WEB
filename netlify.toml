@@ -11,29 +11,11 @@
 # No reescribir /api/* ni /auth/* a /.netlify/functions/*: cuando config.path
 # existe, Netlify deshabilita la URL por nombre de Function.
 
+# Una sola regla Edge evita el límite de reglas del plan. access-gate sólo
+# consulta /api/session para rutas protegidas y deja pasar el resto sin trabajo extra.
 [[edge_functions]]
   function = "access-gate"
-  path = "/admin"
-
-[[edge_functions]]
-  function = "access-gate"
-  path = "/admin/*"
-
-[[edge_functions]]
-  function = "access-gate"
-  path = "/tienda/b2b/catalogo.html"
-
-[[edge_functions]]
-  function = "access-gate"
-  path = "/tienda/b2b/store.html"
-
-[[edge_functions]]
-  function = "access-gate"
-  path = "/tienda/b2b/cotizaciones.html"
-
-[[edge_functions]]
-  function = "access-gate"
-  path = "/tienda/b2b/autorizaciones.html"
+  path = "/*"
 
 [[headers]]
   for = "/*"
