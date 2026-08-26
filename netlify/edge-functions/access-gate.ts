@@ -1,64 +1,31 @@
-const COOKIE = "__Host-xolum_session";
+const ADMIN_ROLES = new Set(["SUPER_ADMIN", "ADMIN"]);
+const B2B_ROLES = new Set(["B2B_BUYER", "B2B_APPROVER", "SUPER_ADMIN", "ADMIN"]);
 
-function decodeBase64(value: string): Uint8Array {
-  let normalized = String(value || "").replace(/-/g, "+").replace(/_/g, "/");
-  while (normalized.length % 4) normalized += "=";
-  const binary = atob(normalized);
-  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
-}
-
-function parseCookie(header: string | null): Record<string, string> {
-  return Object.fromEntries(
-    (header || "")
-      .split(/;\s*/)
-      .filter(Boolean)
-      .map((part) => {
-        const index = part.indexOf("=");
-        if (index < 0) return [decodeURIComponent(part), ""];
-        return [
-          decodeURIComponent(part.slice(0, index)),
-          decodeURIComponent(part.slice(index + 1)),
-        ];
-      }),
+function loginRedirect(url: URL): Response {
+  return Response.redirect(
+    new URL(`/auth/login?returnTo=${encodeURIComponent(url.pathname + url.search)}`, url),
+    302,
   );
 }
 
-async function verify(token: string | undefined) {
+async function readSession(request: Request, url: URL) {
+  const cookie = request.headers.get("cookie") || "";
+  if (!cookie) return null;
+
   try {
-    const [version, iv, ciphertext, tag] = String(token || "").split(".");
-    if (version !== "v1" || !iv || !ciphertext || !tag) return null;
-
-    const rawKey = Netlify.env.get("XOLUM_SESSION_COOKIE_KEY") || "";
-    const keyBytes = decodeBase64(rawKey);
-    if (keyBytes.length !== 32) return null;
-
-    const cryptoKey = await crypto.subtle.importKey(
-      "raw",
-      keyBytes,
-      { name: "AES-GCM" },
-      false,
-      ["decrypt"],
-    );
-
-    const ciphertextBytes = decodeBase64(ciphertext);
-    const tagBytes = decodeBase64(tag);
-    const combined = new Uint8Array(ciphertextBytes.length + tagBytes.length);
-    combined.set(ciphertextBytes);
-    combined.set(tagBytes, ciphertextBytes.length);
-
-    const plaintext = await crypto.subtle.decrypt(
-      {
-        name: "AES-GCM",
-        iv: decodeBase64(iv),
-        tagLength: 128,
+    const response = await fetch(new URL("/api/session", url.origin), {
+      method: "GET",
+      headers: {
+        cookie,
+        "x-xolum-edge-session-check": "1",
       },
-      cryptoKey,
-      combined,
-    );
+      redirect: "manual",
+    });
 
-    const payload = JSON.parse(new TextDecoder().decode(plaintext));
-    if (!payload.exp || Date.now() / 1000 >= payload.exp) return null;
-    return payload;
+    if (!response.ok) return null;
+    const payload = await response.json();
+    if (!payload?.ok || !payload?.authenticated || !payload?.user) return null;
+    return payload.user;
   } catch {
     return null;
   }
@@ -66,8 +33,6 @@ async function verify(token: string | undefined) {
 
 export default async (request: Request) => {
   const url = new URL(request.url);
-  const cookies = parseCookie(request.headers.get("cookie"));
-  const session = await verify(cookies[COOKIE]);
 
   const isAdmin = url.pathname === "/admin" || url.pathname.startsWith("/admin/");
   const isB2B = [
@@ -77,21 +42,18 @@ export default async (request: Request) => {
     "/tienda/b2b/autorizaciones.html",
   ].includes(url.pathname);
 
-  if (isAdmin && !["SUPER_ADMIN", "ADMIN"].includes(session?.role)) {
-    return Response.redirect(
-      new URL(`/auth/login?returnTo=${encodeURIComponent(url.pathname + url.search)}`, url),
-      302,
-    );
+  // Esta Edge Function corre de forma global para usar una sola regla de Netlify,
+  // pero sólo consulta la sesión cuando la ruta realmente requiere protección.
+  if (!isAdmin && !isB2B) return;
+
+  const user = await readSession(request, url);
+
+  if (isAdmin && !ADMIN_ROLES.has(user?.role)) {
+    return loginRedirect(url);
   }
 
-  if (
-    isB2B &&
-    !["B2B_BUYER", "B2B_APPROVER", "SUPER_ADMIN", "ADMIN"].includes(session?.role)
-  ) {
-    return Response.redirect(
-      new URL(`/auth/login?returnTo=${encodeURIComponent(url.pathname + url.search)}`, url),
-      302,
-    );
+  if (isB2B && !B2B_ROLES.has(user?.role)) {
+    return loginRedirect(url);
   }
 
   return;
