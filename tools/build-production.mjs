@@ -98,6 +98,7 @@ const overlays = [
   ['preview/tms-driver.js', 'public/tms-driver.js'],
   ['preview/tms-driver-manifest.json', 'public/tms-driver-manifest.json'],
   ['preview/tms-driver-sw.js', 'public/tms-driver-sw.js'],
+  ['preview/tms-driver-sw-register.js', 'public/tms-driver-sw-register.js'],
 ];
 for (const [source, destination] of overlays) copyFile(source, destination);
 
@@ -106,6 +107,17 @@ const tmsAssetsDestination = path.join(OUT, 'public', 'assets', 'tms');
 if (!fs.existsSync(tmsAssetsSource)) fail('falta preview/assets/tms', 52);
 fs.mkdirSync(tmsAssetsDestination, { recursive: true });
 fs.cpSync(tmsAssetsSource, tmsAssetsDestination, { recursive: true, force: true });
+
+// Producción no permite bloques de script inline. El preview histórico del operador aún
+// conserva un registro inline del Service Worker; se externaliza al ensamblar producción.
+const driverHtmlPath = path.join(OUT, 'public', 'tms-driver.html');
+let driverHtml = fs.readFileSync(driverHtmlPath, 'utf8');
+const inlineSwPattern = /<script>\s*if\s*\(\s*['"]serviceWorker['"]\s*in\s*navigator\s*\)\s*\{\s*navigator\.serviceWorker\.register\(\s*['"]tms-driver-sw\.js['"]\s*\)\.catch\(\(\)\s*=>\s*\{\}\);?\s*\}\s*<\/script>/i;
+if (!inlineSwPattern.test(driverHtml)) {
+  fail('no se encontró el bloque inline esperado de registro del Service Worker del operador', 53);
+}
+driverHtml = driverHtml.replace(inlineSwPattern, '<script src="tms-driver-sw-register.js"></script>');
+fs.writeFileSync(driverHtmlPath, driverHtml);
 
 // Bloqueos de regresión.
 const legacyDemo = containsTextRecursive(path.join(OUT, 'public'), 'XOLUM-DEMO');
