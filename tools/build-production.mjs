@@ -88,7 +88,7 @@ for (const item of requiredAfterExtract) {
   if (!fs.existsSync(path.join(OUT, item))) fail(`el bundle no contiene ${item}`, 51);
 }
 
-// Overlay de los productos web que evolucionan en XOLUM.WEB.
+// Overlay de los productos web y validadores que evolucionan en XOLUM.WEB.
 const overlays = [
   ['preview/tms.html', 'public/tms.html'],
   ['preview/tms-app.html', 'public/tms-app.html'],
@@ -99,6 +99,7 @@ const overlays = [
   ['preview/tms-driver-manifest.json', 'public/tms-driver-manifest.json'],
   ['preview/tms-driver-sw.js', 'public/tms-driver-sw.js'],
   ['preview/tms-driver-sw-register.js', 'public/tms-driver-sw-register.js'],
+  ['tools/validate-preview-safe.mjs', 'tools/validate-preview-safe.mjs'],
 ];
 for (const [source, destination] of overlays) copyFile(source, destination);
 
