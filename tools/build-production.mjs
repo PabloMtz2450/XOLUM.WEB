@@ -88,8 +88,11 @@ for (const item of requiredAfterExtract) {
   if (!fs.existsSync(path.join(OUT, item))) fail(`el bundle no contiene ${item}`, 51);
 }
 
-// Overlay de los productos web y validadores que evolucionan en XOLUM.WEB.
+// Overlay de configuración, productos web y validadores gobernados por XOLUM.WEB.
+// El netlify.toml raíz debe sustituir la copia histórica incluida en el bundle para
+// que el candidato validado y la configuración usada por Netlify sean idénticos.
 const overlays = [
+  ['netlify.toml', 'netlify.toml'],
   ['preview/tms.html', 'public/tms.html'],
   ['preview/tms-app.html', 'public/tms-app.html'],
   ['preview/tms-core.js', 'public/tms-core.js'],
