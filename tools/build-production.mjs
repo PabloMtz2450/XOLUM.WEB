@@ -106,6 +106,41 @@ const overlays = [
 ];
 for (const [source, destination] of overlays) copyFile(source, destination);
 
+// OAuth/OIDC vuelve desde un sitio externo (Auth0). Una cookie de sesión SameSite=Strict
+// puede quedar guardada pero no enviarse en el primer salto callback -> /admin.
+// Usamos Lax únicamente para la cookie de sesión, manteniendo Secure + HttpOnly + __Host-.
+// La cookie CSRF permanece Strict y las mutaciones siguen exigiendo mismo origen + token CSRF.
+const authHelperPath = path.join(OUT, 'netlify', 'functions', '_auth.mjs');
+let authHelper = fs.readFileSync(authHelperPath, 'utf8');
+const sessionIssueStrict = '`${COOKIE}=${token}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Strict`';
+const sessionIssueLax = '`${COOKIE}=${token}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`';
+const sessionClearStrict = '`${COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict`';
+const sessionClearLax = '`${COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`';
+const csrfStrict = '`${CSRF}=${csrf}; Path=/; Max-Age=${maxAge}; Secure; SameSite=Strict`';
+
+if (!authHelper.includes(sessionIssueStrict)) {
+  fail('no se encontró la definición esperada de cookie de sesión SameSite=Strict en _auth.mjs', 54);
+}
+if (!authHelper.includes(sessionClearStrict)) {
+  fail('no se encontró la limpieza esperada de cookie de sesión SameSite=Strict en _auth.mjs', 55);
+}
+if (!authHelper.includes(csrfStrict)) {
+  fail('no se encontró la cookie CSRF SameSite=Strict esperada en _auth.mjs', 56);
+}
+
+authHelper = authHelper
+  .replace(sessionIssueStrict, sessionIssueLax)
+  .replace(sessionClearStrict, sessionClearLax);
+
+if (!authHelper.includes(sessionIssueLax) || !authHelper.includes(sessionClearLax)) {
+  fail('no se aplicó correctamente la política SameSite=Lax a la cookie de sesión', 57);
+}
+if (!authHelper.includes(csrfStrict)) {
+  fail('la política CSRF SameSite=Strict fue alterada inesperadamente', 58);
+}
+fs.writeFileSync(authHelperPath, authHelper);
+console.log('OAuth session cookie policy: SameSite=Lax; CSRF cookie remains SameSite=Strict');
+
 const tmsAssetsSource = path.join(ROOT, 'preview', 'assets', 'tms');
 const tmsAssetsDestination = path.join(OUT, 'public', 'assets', 'tms');
 if (!fs.existsSync(tmsAssetsSource)) fail('falta preview/assets/tms', 52);
