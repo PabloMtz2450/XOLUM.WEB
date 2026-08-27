@@ -1,0 +1,118 @@
+name: XOLUM production bundle audit
+
+on:
+  push:
+    branches:
+      - "handoff/xolum-2026-08-26-auth-ready"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout handoff branch
+        uses: actions/checkout@v4
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Rebuild production bundle exactly as Netlify
+        run: node tools/build-production.mjs && node tools/post-build-hardening.mjs
+
+      - name: Verify baseline build output exists
+        run: |
+          test -f .xolum-prod/public/index.html
+          test -f .xolum-prod/public/tms.html
+          test -f .xolum-prod/public/tms-app.html
+          test -f .xolum-prod/public/tms-driver.html
+          test -f .xolum-prod/netlify/functions/_auth.mjs
+
+      - name: Inventory XOLUM brand assets in assembled production
+        run: |
+          echo "=== BRAND / LOGO / ICON CANDIDATES ==="
+          find .xolum-prod/public -type f \( -iname '*xolum*' -o -iname '*logo*' -o -iname '*icon*' -o -iname '*isotipo*' \) -printf '%p\t%s bytes\n' | sort | head -250
+
+      - name: Validate PNG assets structurally
+        run: |
+          echo "=== PNG VALIDATION ==="
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct, zlib
+
+          def validate_png(path: Path):
+              data=path.read_bytes()
+              if not data.startswith(b'\x89PNG\r\n\x1a\n'):
+                  return False,'bad signature'
+              pos=8; idat=b''; width=height=None
+              try:
+                  while pos < len(data):
+                      n=struct.unpack('>I',data[pos:pos+4])[0]
+                      typ=data[pos+4:pos+8]
+                      chunk=data[pos+8:pos+8+n]
+                      crc=struct.unpack('>I',data[pos+8+n:pos+12+n])[0]
+                      calc=zlib.crc32(typ+chunk)&0xffffffff
+                      if crc != calc: return False,f'crc {typ.decode(errors="replace")}'
+                      if typ==b'IHDR': width,height=struct.unpack('>II',chunk[:8])
+                      if typ==b'IDAT': idat += chunk
+                      pos += 12+n
+                  zlib.decompress(idat)
+                  return True,f'{width}x{height}'
+              except Exception as exc:
+                  return False,str(exc)
+
+          for p in sorted(Path('.xolum-prod/public').rglob('*.png')):
+              low=p.name.lower()
+              if any(token in low for token in ('xolum','logo','icon','isotipo')):
+                  ok,detail=validate_png(p)
+                  print(('OK  ' if ok else 'FAIL'),p,detail)
+          PY
+
+      - name: Inventory inline event handlers blocking strict CSP
+        run: |
+          echo "=== INLINE EVENT HANDLERS ==="
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          total=0
+          for p in sorted(Path('.xolum-prod/public').rglob('*.html')):
+              text=p.read_text('utf-8',errors='replace')
+              matches=list(re.finditer(r'\son[a-zA-Z]+\s*=\s*(["\'])',text))
+              if not matches: continue
+              total += len(matches)
+              attrs=[]
+              for m in matches:
+                  start=m.start()+1
+                  name=re.match(r'on[a-zA-Z]+',text[start:]).group(0)
+                  attrs.append(name)
+              print(f'{p}: {len(matches)} -> {sorted(set(attrs))}')
+          print(f'TOTAL_INLINE_HANDLERS={total}')
+          PY
+
+      - name: Inventory inline script blocks
+        run: |
+          echo "=== INLINE SCRIPT BLOCKS ==="
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          total=0
+          for p in sorted(Path('.xolum-prod/public').rglob('*.html')):
+              text=p.read_text('utf-8',errors='replace')
+              blocks=re.findall(r'<script(?![^>]*\bsrc=)[^>]*>.*?</script>',text,flags=re.I|re.S)
+              if blocks:
+                  total += len(blocks)
+                  print(f'{p}: {len(blocks)}')
+          print(f'TOTAL_INLINE_SCRIPT_BLOCKS={total}')
+          PY
+
+      - name: Show production route tree
+        run: |
+          echo "=== TOP-LEVEL PUBLIC FILES ==="
+          find .xolum-prod/public -maxdepth 2 -type f -printf '%p\n' | sort | head -350
