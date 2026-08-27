@@ -88,11 +88,17 @@ for (const item of requiredAfterExtract) {
   if (!fs.existsSync(path.join(OUT, item))) fail(`el bundle no contiene ${item}`, 51);
 }
 
-// Overlay de configuración, productos web y validadores gobernados por XOLUM.WEB.
+// Overlay de configuración, Home, productos web y validadores gobernados por XOLUM.WEB.
+// La Home se superpone explícitamente para que la mejora visual validada en preview sea
+// exactamente la que llega al candidato productivo, sin alterar lógica de negocio.
 // El netlify.toml raíz debe sustituir la copia histórica incluida en el bundle para
 // que el candidato validado y la configuración usada por Netlify sean idénticos.
 const overlays = [
   ['netlify.toml', 'netlify.toml'],
+  ['preview/index.html', 'public/index.html'],
+  ['preview/styles.css', 'public/styles.css'],
+  ['preview/home-ui.css', 'public/home-ui.css'],
+  ['preview/home-ui.js', 'public/home-ui.js'],
   ['preview/tms.html', 'public/tms.html'],
   ['preview/tms-app.html', 'public/tms-app.html'],
   ['preview/tms-core.js', 'public/tms-core.js'],
