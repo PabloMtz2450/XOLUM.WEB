@@ -1,0 +1,38 @@
+name: XOLUM Home visual smoke
+
+on:
+  push:
+    branches:
+      - "release/xolum-home-visual-2026-08-27"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install project dependencies
+        run: npm install
+      - name: Assemble production candidate
+        run: npm run build
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Serve candidate
+        run: |
+          python3 -m http.server 4173 --directory .xolum-prod/public > /tmp/xolum-home-server.log 2>&1 &
+          echo $! > /tmp/xolum-home-server.pid
+          for i in {1..30}; do curl -fsS http://127.0.0.1:4173/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/xolum-home-server.log
+          exit 1
+      - name: Smoke desktop mobile and reduced motion
+        run: node tools/smoke-home-visual.mjs
