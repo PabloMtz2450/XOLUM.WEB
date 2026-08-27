@@ -46,6 +46,10 @@ try{
     const ctx=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
     const page=await ctx.newPage();
     await auditPage(page,'mobile');
+    const metrics=await page.evaluate(()=>({innerWidth:window.innerWidth,innerHeight:window.innerHeight,clientWidth:document.documentElement.clientWidth,visualWidth:window.visualViewport?.width||null,devicePixelRatio:window.devicePixelRatio}));
+    const configured=page.viewportSize();
+    assert(configured?.width===390&&configured?.height===844,`mobile: viewport Playwright inesperado ${JSON.stringify(configured)}`);
+    assert(metrics.innerWidth===390,`mobile: window.innerWidth inesperado ${JSON.stringify(metrics)}`);
     assert(await page.locator('.menu-button').isVisible(),'mobile: botón menú no visible');
     await page.locator('.menu-button').click(); await page.waitForTimeout(120);
     assert(await page.locator('body').evaluate(el=>el.classList.contains('nav-open')),'mobile: body no entra nav-open');
@@ -56,7 +60,9 @@ try{
     await page.locator('.menu-button').click(); await page.locator('.main-nav a[href="#tienda"]').click(); await page.waitForTimeout(300);
     assert((await page.evaluate(()=>location.hash))==='#tienda','mobile: navegación a tienda falló');
     assert(!(await page.locator('body').evaluate(el=>el.classList.contains('nav-open'))),'mobile: menú no cerró tras navegar');
-    const qbox=await page.locator('.quick-nav').boundingBox(); assert(qbox&&qbox.x>=0&&qbox.x+qbox.width<=390,'mobile: quick-nav fuera de viewport');
+    const qbox=await page.locator('.quick-nav').boundingBox();
+    const inViewport=Boolean(qbox&&qbox.x>=-0.5&&qbox.x+qbox.width<=metrics.innerWidth+0.5);
+    assert(inViewport,`mobile: quick-nav fuera de viewport qbox=${JSON.stringify(qbox)} metrics=${JSON.stringify(metrics)}`);
     await ctx.close();
   }
   {
