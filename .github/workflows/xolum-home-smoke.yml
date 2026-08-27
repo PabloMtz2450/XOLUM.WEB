@@ -5,6 +5,7 @@ on:
     branches:
       - "release/xolum-home-visual-2026-08-27"
       - "fix/xolum-home-mobile-responsive-2026-08-27"
+      - "refactor/xolum-home-tms-separation-2026-08-27"
       - "main"
   workflow_dispatch:
 
