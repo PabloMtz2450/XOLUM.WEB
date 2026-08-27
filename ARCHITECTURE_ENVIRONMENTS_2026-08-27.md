@@ -6,6 +6,8 @@ Fecha: 2026-08-27
 
 XOLUM.WEB no debe alojar demos privadas dentro del mismo runtime ni de la misma base de código activa que TMS productivo.
 
+Las demos sí pueden convivir inicialmente entre ellas dentro de un único repositorio y portal `XOLUM.DEMOS`. Se separarán por producto únicamente cuando exista una razón técnica real: escala, seguridad, equipo, ciclo de release o aislamiento de infraestructura.
+
 ## Baseline observado antes del refactor
 
 Antes del PR #3 se verificó que:
@@ -36,17 +38,11 @@ Antes del PR #3 se verificó que:
 
 ### Extracción de demos
 
-- La versión original de las demos quedó preservada en la rama `extract/xolum-demos-2026-08-27` para migración.
-- Los archivos demo fueron eliminados físicamente de la rama productiva de refactor:
-  - `preview/tms-app.html`
-  - `preview/tms-core.js`
-  - `preview/tms.js`
-  - `preview/tms-driver.html`
-  - `preview/tms-driver.js`
-  - `preview/tms-driver-manifest.json`
-  - `preview/tms-driver-sw.js`
-  - `preview/tms-driver-sw-register.js`
-  - assets visuales específicos de la demo TMS.
+- La versión original de las demos quedó preservada en la rama `extract/xolum-demos-2026-08-27` únicamente como respaldo histórico y fuente de recuperación.
+- Se creó `seed/xolum-demos` a partir de esa extracción. Esta es la base temporal de trabajo para poblar el futuro repositorio `XOLUM.DEMOS`.
+- `extract/xolum-demos-2026-08-27` no es un entorno ni una rama de desarrollo activo.
+- Cuando exista `XOLUM.DEMOS`, el contenido de `seed/xolum-demos` se migrará una sola vez y el desarrollo de demos continuará exclusivamente en ese repositorio.
+- Los archivos demo fueron eliminados físicamente de la rama productiva de `XOLUM.WEB`.
 - `tools/build-production.mjs` ya no depende de esos archivos ni los superpone al candidato productivo.
 - `tools/post-build-hardening.mjs` elimina además cualquier copia histórica que pudiera venir dentro del bundle heredado y falla si un artefacto demo sobrevive.
 
@@ -57,51 +53,93 @@ Antes del PR #3 se verificó que:
 - CI y Netlify generan así el mismo candidato productivo.
 - Las reglas Netlify que trataban `tms-app.html` y `tms-driver.html` como rutas publicables fueron retiradas.
 
-## Arquitectura objetivo restante
+## Arquitectura objetivo
 
-### Producción TMS
+### Producción pública
 
-El entorno productivo debe evolucionar con:
+```text
+XOLUM.WEB
+└── xolum.com.mx
+    ├── Home
+    ├── Store
+    ├── B2B
+    └── entradas a productos productivos
+```
 
-- autorización por tenant/empresa y rol;
-- persistencia productiva definida y escalable;
-- sesiones revocables y política de expiración definida;
-- auditoría de login, logout, fallos y revocación;
-- aplicación operativa productiva independiente de cualquier maqueta.
+TMS productivo permanece aislado de cualquier maqueta. Su autorización fina por tenant/empresa y rol se definirá únicamente con el modelo productivo real.
 
-No se declara que esas capas estén terminadas sólo por proteger la entrada `/tms`.
+### Portal único de demos
 
-### Demos privadas
-
-El destino final debe ser un repositorio y deploy independientes de `XOLUM.WEB`.
-
-Destino recomendado:
-
-- repo: `XOLUM.DEMOS` o equivalente;
-- host: `demos.xolum.com.mx`;
-- autenticación y almacenamiento independientes del TMS productivo.
-
-Estructura sugerida:
+El primer paso será un solo repositorio y un solo deploy para todas las demos:
 
 ```text
 XOLUM.DEMOS/
-  public/
-    index.html
-    login/
-    proyecto-1/
-    proyecto-2/
-  netlify/
-    functions/
-    edge-functions/
+├── public/
+│   ├── index.html
+│   ├── login/
+│   ├── tms/
+│   ├── fiscal/
+│   ├── sales/
+│   ├── nomina/
+│   └── proyectos/
+├── netlify/
+│   ├── functions/
+│   └── edge-functions/
+├── tools/
+├── netlify.toml
+└── package.json
 ```
 
-Características:
+Host objetivo:
 
-- gatekeeper independiente;
-- acceso únicamente por invitación;
-- credenciales de demos nunca compartidas con TMS;
-- cookie, secreto de sesión, almacenamiento y usuarios independientes;
-- no reutilizar tokens ni persistencia productiva de TMS.
+```text
+https://demos.xolum.com.mx/
+https://demos.xolum.com.mx/tms/
+https://demos.xolum.com.mx/fiscal/
+https://demos.xolum.com.mx/sales/
+```
+
+### Regla de crecimiento
+
+No crear un repositorio por demo desde el inicio.
+
+Cada demo permanecerá dentro de `XOLUM.DEMOS` hasta que exista un motivo real para separarla. Si más adelante una demo requiere aislamiento, podrá migrarse a un repo/deploy propio manteniendo la URL pública mediante routing o proxy.
+
+Ejemplo futuro:
+
+```text
+XOLUM.DEMOS            -> portal, login e invitaciones
+XOLUM.DEMOS.TMS        -> runtime demo TMS
+XOLUM.DEMOS.FISCAL     -> runtime demo Fiscal
+```
+
+El visitante podrá seguir usando `/tms/` y `/fiscal/` aunque internamente cada producto termine desplegándose por separado.
+
+## Gatekeeper de demos
+
+El portal de demos tendrá una autenticación común e independiente de producción.
+
+Debe permitir:
+
+- acceso por invitación;
+- usuario y vigencia;
+- habilitación por proyecto/producto;
+- revocación;
+- auditoría de accesos;
+- sesiones, cookies, secretos y almacenamiento propios.
+
+Ejemplo conceptual de autorización:
+
+```text
+usuario: prospecto@empresa.mx
+productos:
+  TMS: permitido
+  Fiscal: permitido
+  Sales: denegado
+vigencia: 2026-09-01 / 2026-09-15
+```
+
+Nunca reutilizar credenciales, cookies, tokens, secretos ni persistencia del TMS productivo.
 
 ## UI de login
 
@@ -128,25 +166,39 @@ No se implementa todavía un nuevo esquema JWT/base productiva porque no existe 
 
 Inventar cualquiera de estas piezas sería sustituir arquitectura por suposición.
 
-## Pendientes para separación física definitiva
+## Flujo oficial de migración de demos
+
+```text
+extract/xolum-demos-2026-08-27
+        respaldo histórico
+              │
+              ▼
+seed/xolum-demos
+        base temporal de trabajo
+              │
+              ▼
+XOLUM.DEMOS
+        repositorio definitivo
+              │
+              ▼
+demos.xolum.com.mx
+```
+
+Después de validar la migración a `XOLUM.DEMOS`:
+
+- `extract/...` queda sólo como respaldo histórico;
+- `seed/...` queda congelada como evidencia de migración;
+- ninguna de las dos ramas recibe nuevas funcionalidades;
+- toda nueva demo nace dentro de `XOLUM.DEMOS`.
+
+## Pendientes físicos
 
 1. Crear repositorio independiente `XOLUM.DEMOS`.
-2. Migrar desde `extract/xolum-demos-2026-08-27` al nuevo repositorio.
-3. Crear deploy independiente, preferentemente `demos.xolum.com.mx`.
-4. Implementar gatekeeper de demos con usuarios/invitaciones propios.
-5. Validar que demos no compartan secretos, cookies, almacenamiento ni credenciales con TMS.
-6. Definir el modelo real de tenant/roles de TMS antes de endurecer autorización fina.
-7. Ejecutar pruebas de seguridad y recuperación del TMS productivo antes de declarar capacidad de alto volumen.
-
-## Criterio de aceptación del PR #3
-
-El PR sólo puede fusionarse si el HEAD exacto cumple:
-
-- build completo mediante `npm run build`;
-- post-build hardening ejecutado;
-- ausencia de artefactos demo en `.xolum-prod/public`;
-- validadores de seguridad y roles aprobados;
-- smoke desktop aprobado;
-- smoke móvil 320/360/390/430 aprobado;
-- interacción iPhone 13 aprobada;
-- reduced-motion aprobado.
+2. Migrar desde `seed/xolum-demos` al nuevo repositorio.
+3. Crear deploy independiente `demos.xolum.com.mx`.
+4. Construir el portal modular de demos.
+5. Implementar gatekeeper común por invitación.
+6. Migrar la demo TMS existente a `/tms/` dentro de `XOLUM.DEMOS`.
+7. Incorporar Fiscal, Sales, Nómina y futuros pilotos dentro del mismo portal inicial.
+8. Separar demos a repos/deploys propios únicamente cuando aporte valor real.
+9. Validar que demos no compartan secretos, cookies, almacenamiento ni credenciales con producción.
