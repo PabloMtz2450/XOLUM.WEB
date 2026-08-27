@@ -63,7 +63,7 @@ body.nav-open .menu-button:after{top:21px;transform:rotate(-45deg)}
   .giant-copy{font-size:clamp(54px,16vw,72px)}
   .section-intro{font-size:18px}
   .body-copy p{font-size:20px}
-  .quick-nav{left:auto;right:12px;bottom:14px;width:min(176px,calc(100vw - 24px));max-width:calc(100vw - 24px);justify-content:flex-end}
+  .quick-nav{left:12px;right:auto;bottom:14px;width:176px;max-width:calc(100vw - 24px);justify-content:flex-start}
   .quick-nav-store{flex:1 1 auto;min-width:0;padding:0 10px}
   .quick-nav-top{flex:0 0 44px}
 }
