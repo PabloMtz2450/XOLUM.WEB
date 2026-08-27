@@ -1,5 +1,5 @@
 XOLUM ASSEMBLED PRODUCTION AUDIT
-AUDITED_SHA=a2b4473b575bef6eb5ac11fcfa8f7844ffab5e65
+AUDITED_SHA=ed8d187454d22368cbecd14ac4af04584f33d2b7
 
 === BRAND / LOGO / ICON CANDIDATES ===
 .xolum-prod/public/admin/assets/generated/catalogo-maestro-inline-1.js	1876 bytes
@@ -78,7 +78,10 @@ TOTAL_INLINE_SCRIPT_BLOCKS=0
 .xolum-prod/public/assets/xolum-metallic.svg
 .xolum-prod/public/assets/xolum-symbol-metallic.svg
 .xolum-prod/public/cuenta/pedidos.html
+.xolum-prod/public/home-ui.css
+.xolum-prod/public/home-ui.js
 .xolum-prod/public/index.html
+.xolum-prod/public/styles.css
 .xolum-prod/public/tienda/index.html
 .xolum-prod/public/tms-app.html
 .xolum-prod/public/tms-core.js
