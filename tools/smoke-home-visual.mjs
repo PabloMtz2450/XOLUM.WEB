@@ -13,7 +13,7 @@ async function auditPage(page,label){
   assert(response?.ok(),`${label}: home HTTP ${response?.status()}`);
   assert(await page.locator('h1').isVisible(),`${label}: H1 no visible`);
   assert((await page.locator('h1').innerText()).includes('FORMA MEJOR'),`${label}: H1 inesperado`);
-  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
   assert(overflow<=2,`${label}: overflow horizontal ${overflow}px`);
   assert(await page.locator('.quick-nav').count()===1,`${label}: quick-nav ausente/duplicado`);
   assert(consoleErrors.length===0,`${label}: console errors: ${consoleErrors.join(' | ')}`);
@@ -46,10 +46,11 @@ try{
     const ctx=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
     const page=await ctx.newPage();
     await auditPage(page,'mobile');
-    const metrics=await page.evaluate(()=>({innerWidth:window.innerWidth,innerHeight:window.innerHeight,clientWidth:document.documentElement.clientWidth,visualWidth:window.visualViewport?.width||null,devicePixelRatio:window.devicePixelRatio}));
+    const metrics=await page.evaluate(()=>({innerWidth:window.innerWidth,innerHeight:window.innerHeight,clientWidth:document.documentElement.clientWidth,visualWidth:window.visualViewport?.width||null,visualHeight:window.visualViewport?.height||null,devicePixelRatio:window.devicePixelRatio}));
     const configured=page.viewportSize();
     assert(configured?.width===390&&configured?.height===844,`mobile: viewport Playwright inesperado ${JSON.stringify(configured)}`);
-    assert(metrics.innerWidth===390,`mobile: window.innerWidth inesperado ${JSON.stringify(metrics)}`);
+    assert(metrics.clientWidth===390,`mobile: clientWidth inesperado ${JSON.stringify(metrics)}`);
+    assert(Math.abs((metrics.visualWidth??0)-390)<=0.5,`mobile: visualViewport.width inesperado ${JSON.stringify(metrics)}`);
     assert(await page.locator('.menu-button').isVisible(),'mobile: botón menú no visible');
     await page.locator('.menu-button').click(); await page.waitForTimeout(120);
     assert(await page.locator('body').evaluate(el=>el.classList.contains('nav-open')),'mobile: body no entra nav-open');
@@ -61,8 +62,9 @@ try{
     assert((await page.evaluate(()=>location.hash))==='#tienda','mobile: navegación a tienda falló');
     assert(!(await page.locator('body').evaluate(el=>el.classList.contains('nav-open'))),'mobile: menú no cerró tras navegar');
     const qbox=await page.locator('.quick-nav').boundingBox();
-    const inViewport=Boolean(qbox&&qbox.x>=-0.5&&qbox.x+qbox.width<=metrics.innerWidth+0.5);
-    assert(inViewport,`mobile: quick-nav fuera de viewport qbox=${JSON.stringify(qbox)} metrics=${JSON.stringify(metrics)}`);
+    const viewportWidth=Math.min(metrics.clientWidth,metrics.visualWidth??metrics.clientWidth);
+    const inViewport=Boolean(qbox&&qbox.x>=-0.5&&qbox.x+qbox.width<=viewportWidth+0.5);
+    assert(inViewport,`mobile: quick-nav fuera de viewport qbox=${JSON.stringify(qbox)} viewportWidth=${viewportWidth} metrics=${JSON.stringify(metrics)}`);
     await ctx.close();
   }
   {
