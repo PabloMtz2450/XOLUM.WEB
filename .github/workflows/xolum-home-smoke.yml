@@ -35,4 +35,20 @@ jobs:
           cat /tmp/xolum-home-server.log
           exit 1
       - name: Smoke desktop mobile and reduced motion
-        run: node tools/smoke-home-visual.mjs
+        shell: bash
+        run: |
+          set +e
+          node tools/smoke-home-visual.mjs 2>&1 | tee smoke-home.log
+          code=${PIPESTATUS[0]}
+          echo "$code" > smoke-home.exit
+          exit $code
+      - name: Upload smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xolum-home-smoke-evidence
+          path: |
+            smoke-home.log
+            smoke-home.exit
+            /tmp/xolum-home-server.log
+          if-no-files-found: warn
