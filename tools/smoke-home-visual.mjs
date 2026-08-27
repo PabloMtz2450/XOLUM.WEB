@@ -55,9 +55,10 @@ try{
     const ctx=await browser.newContext({...iphone13});
     const page=await ctx.newPage();
     await auditPage(page,'mobile');
-    const metrics=await page.evaluate(()=>({innerWidth:window.innerWidth,innerHeight:window.innerHeight,clientWidth:document.documentElement.clientWidth,visualWidth:window.visualViewport?.width||null,visualHeight:window.visualViewport?.height||null,devicePixelRatio:window.devicePixelRatio,userAgent:navigator.userAgent}));
+    const metrics=await page.evaluate(()=>({innerWidth:window.innerWidth,innerHeight:window.innerHeight,clientWidth:document.documentElement.clientWidth,visualWidth:window.visualViewport?.width||null,visualHeight:window.visualViewport?.height||null,screenWidth:window.screen.width,screenHeight:window.screen.height,devicePixelRatio:window.devicePixelRatio,userAgent:navigator.userAgent}));
     const configured=page.viewportSize();
-    assert(configured?.width===390&&configured?.height===844,`mobile: descriptor iPhone 13 inesperado ${JSON.stringify(configured)}`);
+    assert(configured?.width===390,`mobile: ancho viewport iPhone 13 inesperado ${JSON.stringify(configured)}`);
+    assert(metrics.screenWidth===390&&metrics.screenHeight===844,`mobile: pantalla iPhone 13 inesperada ${JSON.stringify(metrics)}`);
     assert(metrics.clientWidth===390,`mobile: clientWidth inesperado ${JSON.stringify(metrics)}`);
     assert(Math.abs((metrics.visualWidth??0)-390)<=0.5,`mobile: visualViewport.width inesperado ${JSON.stringify(metrics)}`);
     assert(await page.locator('.menu-button').isVisible(),'mobile: botón menú no visible');
@@ -88,5 +89,5 @@ try{
 if(failures.length){console.error('SMOKE HOME: FAIL'); failures.forEach((f,i)=>console.error(`${i+1}. ${f}`)); process.exit(1)}
 console.log('SMOKE HOME: PASS');
 console.log('desktop 1440x900: PASS');
-console.log('mobile iPhone 13 390x844: PASS');
+console.log('mobile iPhone 13 screen 390x844: PASS');
 console.log('reduced-motion: PASS');
