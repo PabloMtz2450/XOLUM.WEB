@@ -7,14 +7,17 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   audit:
+    if: ${{ !contains(github.event.head_commit.message || '', '[audit-report]') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout handoff branch
         uses: actions/checkout@v4
+        with:
+          ref: handoff/xolum-2026-08-26-auth-ready
 
       - name: Setup Node 24
         uses: actions/setup-node@v4
@@ -35,84 +38,90 @@ jobs:
           test -f .xolum-prod/public/tms-driver.html
           test -f .xolum-prod/netlify/functions/_auth.mjs
 
-      - name: Inventory XOLUM brand assets in assembled production
+      - name: Build forensic audit report
+        env:
+          AUDITED_SHA: ${{ github.sha }}
         run: |
-          echo "=== BRAND / LOGO / ICON CANDIDATES ==="
-          find .xolum-prod/public -type f \( -iname '*xolum*' -o -iname '*logo*' -o -iname '*icon*' -o -iname '*isotipo*' \) -printf '%p\t%s bytes\n' | sort | head -250
-
-      - name: Validate PNG assets structurally
-        run: |
-          echo "=== PNG VALIDATION ==="
           python3 - <<'PY'
           from pathlib import Path
-          import struct, zlib
+          import os,re,struct,zlib
 
-          def validate_png(path: Path):
+          root=Path('.xolum-prod/public')
+          out=[]
+          out.append('XOLUM ASSEMBLED PRODUCTION AUDIT')
+          out.append(f'AUDITED_SHA={os.environ.get("AUDITED_SHA","")}')
+          out.append('')
+          out.append('=== BRAND / LOGO / ICON CANDIDATES ===')
+          candidates=[]
+          for p in root.rglob('*'):
+              if p.is_file() and any(t in p.name.lower() for t in ('xolum','logo','icon','isotipo')):
+                  candidates.append(p)
+          for p in sorted(candidates): out.append(f'{p}\t{p.stat().st_size} bytes')
+
+          out.append('')
+          out.append('=== PNG VALIDATION ===')
+          def validate_png(path):
               data=path.read_bytes()
-              if not data.startswith(b'\x89PNG\r\n\x1a\n'):
-                  return False,'bad signature'
-              pos=8; idat=b''; width=height=None
+              if not data.startswith(b'\x89PNG\r\n\x1a\n'): return False,'bad signature'
+              pos=8;idat=b'';width=height=None
               try:
-                  while pos < len(data):
+                  while pos<len(data):
                       n=struct.unpack('>I',data[pos:pos+4])[0]
-                      typ=data[pos+4:pos+8]
-                      chunk=data[pos+8:pos+8+n]
+                      typ=data[pos+4:pos+8];chunk=data[pos+8:pos+8+n]
                       crc=struct.unpack('>I',data[pos+8+n:pos+12+n])[0]
-                      calc=zlib.crc32(typ+chunk)&0xffffffff
-                      if crc != calc: return False,f'crc {typ.decode(errors="replace")}'
+                      if crc!=(zlib.crc32(typ+chunk)&0xffffffff): return False,f'crc {typ.decode(errors="replace")}'
                       if typ==b'IHDR': width,height=struct.unpack('>II',chunk[:8])
-                      if typ==b'IDAT': idat += chunk
-                      pos += 12+n
+                      if typ==b'IDAT': idat+=chunk
+                      pos+=12+n
                   zlib.decompress(idat)
                   return True,f'{width}x{height}'
-              except Exception as exc:
-                  return False,str(exc)
+              except Exception as exc: return False,str(exc)
+          for p in sorted(root.rglob('*.png')):
+              if any(t in p.name.lower() for t in ('xolum','logo','icon','isotipo')):
+                  ok,detail=validate_png(p);out.append(f'{"OK" if ok else "FAIL"}\t{p}\t{detail}')
 
-          for p in sorted(Path('.xolum-prod/public').rglob('*.png')):
-              low=p.name.lower()
-              if any(token in low for token in ('xolum','logo','icon','isotipo')):
-                  ok,detail=validate_png(p)
-                  print(('OK  ' if ok else 'FAIL'),p,detail)
-          PY
-
-      - name: Inventory inline event handlers blocking strict CSP
-        run: |
-          echo "=== INLINE EVENT HANDLERS ==="
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
+          out.append('')
+          out.append('=== INLINE EVENT HANDLERS ===')
+          handler_re=re.compile(r'\s(on[a-zA-Z]+)\s*=\s*(["\'])(.*?)\2',re.S)
           total=0
-          for p in sorted(Path('.xolum-prod/public').rglob('*.html')):
-              text=p.read_text('utf-8',errors='replace')
-              matches=list(re.finditer(r'\son[a-zA-Z]+\s*=\s*(["\'])',text))
+          for p in sorted(root.rglob('*.html')):
+              text=p.read_text('utf-8',errors='replace');matches=list(handler_re.finditer(text))
               if not matches: continue
-              total += len(matches)
-              attrs=[]
+              total+=len(matches);out.append(f'FILE {p} COUNT={len(matches)}')
               for m in matches:
-                  start=m.start()+1
-                  name=re.match(r'on[a-zA-Z]+',text[start:]).group(0)
-                  attrs.append(name)
-              print(f'{p}: {len(matches)} -> {sorted(set(attrs))}')
-          print(f'TOTAL_INLINE_HANDLERS={total}')
-          PY
+                  value=' '.join(m.group(3).split())
+                  out.append(f'  {m.group(1)}={value[:500]}')
+          out.append(f'TOTAL_INLINE_HANDLERS={total}')
 
-      - name: Inventory inline script blocks
-        run: |
-          echo "=== INLINE SCRIPT BLOCKS ==="
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
+          out.append('')
+          out.append('=== INLINE SCRIPT BLOCKS ===')
+          script_re=re.compile(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>',re.I|re.S)
           total=0
-          for p in sorted(Path('.xolum-prod/public').rglob('*.html')):
-              text=p.read_text('utf-8',errors='replace')
-              blocks=re.findall(r'<script(?![^>]*\bsrc=)[^>]*>.*?</script>',text,flags=re.I|re.S)
-              if blocks:
-                  total += len(blocks)
-                  print(f'{p}: {len(blocks)}')
-          print(f'TOTAL_INLINE_SCRIPT_BLOCKS={total}')
+          for p in sorted(root.rglob('*.html')):
+              text=p.read_text('utf-8',errors='replace');matches=list(script_re.finditer(text))
+              if not matches: continue
+              total+=len(matches);out.append(f'FILE {p} COUNT={len(matches)}')
+              for m in matches:
+                  value=' '.join(m.group(1).split())
+                  out.append(f'  {value[:500]}')
+          out.append(f'TOTAL_INLINE_SCRIPT_BLOCKS={total}')
+
+          out.append('')
+          out.append('=== TOP-LEVEL PUBLIC FILES ===')
+          for p in sorted(root.rglob('*')):
+              if p.is_file() and len(p.relative_to(root).parts)<=2: out.append(str(p))
+
+          Path('AUDIT_XOLUM_ASSEMBLED_CURRENT.txt').write_text('\n'.join(out)+'\n','utf-8')
           PY
 
-      - name: Show production route tree
+      - name: Persist audit evidence on handoff branch
         run: |
-          echo "=== TOP-LEVEL PUBLIC FILES ==="
-          find .xolum-prod/public -maxdepth 2 -type f -printf '%p\n' | sort | head -350
+          git config user.name "xolum-audit-bot"
+          git config user.email "xolum-audit-bot@users.noreply.github.com"
+          git add AUDIT_XOLUM_ASSEMBLED_CURRENT.txt
+          if git diff --cached --quiet; then
+            echo "Audit report unchanged"
+          else
+            git commit -m "chore: persist assembled audit evidence [audit-report]"
+            git push origin HEAD:handoff/xolum-2026-08-26-auth-ready
+          fi
