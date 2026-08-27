@@ -63,7 +63,7 @@ body.nav-open .menu-button:after{top:21px;transform:rotate(-45deg)}
   .giant-copy{font-size:clamp(54px,16vw,72px)}
   .section-intro{font-size:18px}
   .body-copy p{font-size:20px}
-  .quick-nav{right:14px;bottom:14px}
+  .quick-nav{left:12px;right:12px;bottom:14px;justify-content:flex-end;max-width:none}
   .quick-nav-store{padding:0 12px}
 }
 @media(prefers-reduced-motion:reduce){
