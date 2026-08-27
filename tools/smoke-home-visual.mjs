@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { chromium, devices } from 'playwright';
 
 const base=process.env.BASE_URL||'http://127.0.0.1:4173';
 const failures=[];
@@ -16,16 +16,13 @@ async function auditPage(page,label){
   const geometry=await page.evaluate(()=>{
     const root=document.documentElement;
     const viewport=root.clientWidth;
-    const overflow=root.scrollWidth-viewport;
     const offenders=Array.from(document.querySelectorAll('*')).map((el)=>{
       const r=el.getBoundingClientRect();
-      const right=r.right-viewport;
-      const left=-r.left;
-      return {tag:el.tagName.toLowerCase(),id:el.id||'',cls:typeof el.className==='string'?el.className:'',left:Number(r.left.toFixed(1)),right:Number(r.right.toFixed(1)),width:Number(r.width.toFixed(1)),rightOverflow:Number(right.toFixed(1)),leftOverflow:Number(left.toFixed(1)),display:getComputedStyle(el).display,position:getComputedStyle(el).position};
+      return {tag:el.tagName.toLowerCase(),id:el.id||'',cls:typeof el.className==='string'?el.className:'',left:Number(r.left.toFixed(1)),right:Number(r.right.toFixed(1)),width:Number(r.width.toFixed(1)),rightOverflow:Number((r.right-viewport).toFixed(1)),leftOverflow:Number((-r.left).toFixed(1))};
     }).filter(x=>x.width>0&&(x.rightOverflow>1||x.leftOverflow>1)).sort((a,b)=>Math.max(b.rightOverflow,b.leftOverflow)-Math.max(a.rightOverflow,a.leftOverflow)).slice(0,12);
-    return {viewport,scrollWidth:root.scrollWidth,overflow,offenders};
+    return {viewport,rootScrollWidth:root.scrollWidth,bodyScrollWidth:document.body.scrollWidth,innerWidth:window.innerWidth,visualWidth:window.visualViewport?.width||null,offenders};
   });
-  assert(geometry.overflow<=2,`${label}: overflow horizontal ${geometry.overflow}px geometry=${JSON.stringify(geometry)}`);
+  assert(geometry.offenders.length===0,`${label}: elementos fuera de viewport geometry=${JSON.stringify(geometry)}`);
   assert(await page.locator('.quick-nav').count()===1,`${label}: quick-nav ausente/duplicado`);
   assert(consoleErrors.length===0,`${label}: console errors: ${consoleErrors.join(' | ')}`);
   assert(pageErrors.length===0,`${label}: page errors: ${pageErrors.join(' | ')}`);
@@ -54,12 +51,13 @@ try{
     await ctx.close();
   }
   {
-    const ctx=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+    const iphone13=devices['iPhone 13'];
+    const ctx=await browser.newContext({...iphone13});
     const page=await ctx.newPage();
     await auditPage(page,'mobile');
-    const metrics=await page.evaluate(()=>({innerWidth:window.innerWidth,innerHeight:window.innerHeight,clientWidth:document.documentElement.clientWidth,visualWidth:window.visualViewport?.width||null,visualHeight:window.visualViewport?.height||null,devicePixelRatio:window.devicePixelRatio}));
+    const metrics=await page.evaluate(()=>({innerWidth:window.innerWidth,innerHeight:window.innerHeight,clientWidth:document.documentElement.clientWidth,visualWidth:window.visualViewport?.width||null,visualHeight:window.visualViewport?.height||null,devicePixelRatio:window.devicePixelRatio,userAgent:navigator.userAgent}));
     const configured=page.viewportSize();
-    assert(configured?.width===390&&configured?.height===844,`mobile: viewport Playwright inesperado ${JSON.stringify(configured)}`);
+    assert(configured?.width===390&&configured?.height===844,`mobile: descriptor iPhone 13 inesperado ${JSON.stringify(configured)}`);
     assert(metrics.clientWidth===390,`mobile: clientWidth inesperado ${JSON.stringify(metrics)}`);
     assert(Math.abs((metrics.visualWidth??0)-390)<=0.5,`mobile: visualViewport.width inesperado ${JSON.stringify(metrics)}`);
     assert(await page.locator('.menu-button').isVisible(),'mobile: botón menú no visible');
@@ -90,5 +88,5 @@ try{
 if(failures.length){console.error('SMOKE HOME: FAIL'); failures.forEach((f,i)=>console.error(`${i+1}. ${f}`)); process.exit(1)}
 console.log('SMOKE HOME: PASS');
 console.log('desktop 1440x900: PASS');
-console.log('mobile 390x844: PASS');
+console.log('mobile iPhone 13 390x844: PASS');
 console.log('reduced-motion: PASS');
