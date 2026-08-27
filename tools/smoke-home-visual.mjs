@@ -13,8 +13,19 @@ async function auditPage(page,label){
   assert(response?.ok(),`${label}: home HTTP ${response?.status()}`);
   assert(await page.locator('h1').isVisible(),`${label}: H1 no visible`);
   assert((await page.locator('h1').innerText()).includes('FORMA MEJOR'),`${label}: H1 inesperado`);
-  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
-  assert(overflow<=2,`${label}: overflow horizontal ${overflow}px`);
+  const geometry=await page.evaluate(()=>{
+    const root=document.documentElement;
+    const viewport=root.clientWidth;
+    const overflow=root.scrollWidth-viewport;
+    const offenders=Array.from(document.querySelectorAll('*')).map((el)=>{
+      const r=el.getBoundingClientRect();
+      const right=r.right-viewport;
+      const left=-r.left;
+      return {tag:el.tagName.toLowerCase(),id:el.id||'',cls:typeof el.className==='string'?el.className:'',left:Number(r.left.toFixed(1)),right:Number(r.right.toFixed(1)),width:Number(r.width.toFixed(1)),rightOverflow:Number(right.toFixed(1)),leftOverflow:Number(left.toFixed(1)),display:getComputedStyle(el).display,position:getComputedStyle(el).position};
+    }).filter(x=>x.width>0&&(x.rightOverflow>1||x.leftOverflow>1)).sort((a,b)=>Math.max(b.rightOverflow,b.leftOverflow)-Math.max(a.rightOverflow,a.leftOverflow)).slice(0,12);
+    return {viewport,scrollWidth:root.scrollWidth,overflow,offenders};
+  });
+  assert(geometry.overflow<=2,`${label}: overflow horizontal ${geometry.overflow}px geometry=${JSON.stringify(geometry)}`);
   assert(await page.locator('.quick-nav').count()===1,`${label}: quick-nav ausente/duplicado`);
   assert(consoleErrors.length===0,`${label}: console errors: ${consoleErrors.join(' | ')}`);
   assert(pageErrors.length===0,`${label}: page errors: ${pageErrors.join(' | ')}`);
