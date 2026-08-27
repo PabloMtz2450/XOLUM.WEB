@@ -1,5 +1,5 @@
 [build]
-  command = "node tools/build-production.mjs && node tools/post-build-hardening.mjs"
+  command = "npm run build"
   publish = ".xolum-prod/public"
   edge_functions = "netlify/edge-functions"
 
@@ -55,15 +55,13 @@
     Content-Security-Policy = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; script-src-elem 'self'; script-src-attr 'unsafe-inline'; upgrade-insecure-requests"
 
 [[headers]]
-  for = "/tms-app.html"
+  for = "/tms"
   [headers.values]
     Cache-Control = "no-store, max-age=0"
     X-Robots-Tag = "noindex, nofollow, noarchive"
-    Content-Security-Policy = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data:; connect-src 'self'; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' https://cdn.jsdelivr.net; script-src-elem 'self' https://cdn.jsdelivr.net; form-action 'self'; upgrade-insecure-requests"
 
 [[headers]]
-  for = "/tms-driver.html"
+  for = "/tms.html"
   [headers.values]
     Cache-Control = "no-store, max-age=0"
     X-Robots-Tag = "noindex, nofollow, noarchive"
-    Content-Security-Policy = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data:; connect-src 'self'; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; form-action 'self'; upgrade-insecure-requests"

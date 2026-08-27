@@ -88,11 +88,9 @@ for (const item of requiredAfterExtract) {
   if (!fs.existsSync(path.join(OUT, item))) fail(`el bundle no contiene ${item}`, 51);
 }
 
-// Overlay de configuración, Home, productos web y validadores gobernados por XOLUM.WEB.
-// La Home se superpone explícitamente para que la mejora visual validada en preview sea
-// exactamente la que llega al candidato productivo, sin alterar lógica de negocio.
-// El netlify.toml raíz debe sustituir la copia histórica incluida en el bundle para
-// que el candidato validado y la configuración usada por Netlify sean idénticos.
+// Overlay de configuración, Home, entrada productiva TMS y validadores gobernados por XOLUM.WEB.
+// Las demos ya no forman parte de esta base de código; cualquier copia histórica que exista
+// dentro del bundle se elimina de forma explícita durante post-build-hardening.
 const overlays = [
   ['netlify.toml', 'netlify.toml'],
   ['preview/index.html', 'public/index.html'],
@@ -100,14 +98,6 @@ const overlays = [
   ['preview/home-ui.css', 'public/home-ui.css'],
   ['preview/home-ui.js', 'public/home-ui.js'],
   ['preview/tms.html', 'public/tms.html'],
-  ['preview/tms-app.html', 'public/tms-app.html'],
-  ['preview/tms-core.js', 'public/tms-core.js'],
-  ['preview/tms.js', 'public/tms.js'],
-  ['preview/tms-driver.html', 'public/tms-driver.html'],
-  ['preview/tms-driver.js', 'public/tms-driver.js'],
-  ['preview/tms-driver-manifest.json', 'public/tms-driver-manifest.json'],
-  ['preview/tms-driver-sw.js', 'public/tms-driver-sw.js'],
-  ['preview/tms-driver-sw-register.js', 'public/tms-driver-sw-register.js'],
   ['tools/validate-preview-safe.mjs', 'tools/validate-preview-safe.mjs'],
 ];
 for (const [source, destination] of overlays) copyFile(source, destination);
@@ -146,23 +136,6 @@ if (!authHelper.includes(csrfStrict)) {
 }
 fs.writeFileSync(authHelperPath, authHelper);
 console.log('OAuth session cookie policy: SameSite=Lax; CSRF cookie remains SameSite=Strict');
-
-const tmsAssetsSource = path.join(ROOT, 'preview', 'assets', 'tms');
-const tmsAssetsDestination = path.join(OUT, 'public', 'assets', 'tms');
-if (!fs.existsSync(tmsAssetsSource)) fail('falta preview/assets/tms', 52);
-fs.mkdirSync(tmsAssetsDestination, { recursive: true });
-fs.cpSync(tmsAssetsSource, tmsAssetsDestination, { recursive: true, force: true });
-
-// Producción no permite bloques de script inline. El preview histórico del operador aún
-// conserva un registro inline del Service Worker; se externaliza al ensamblar producción.
-const driverHtmlPath = path.join(OUT, 'public', 'tms-driver.html');
-let driverHtml = fs.readFileSync(driverHtmlPath, 'utf8');
-const inlineSwPattern = /<script>\s*if\s*\(\s*['"]serviceWorker['"]\s*in\s*navigator\s*\)\s*\{\s*navigator\.serviceWorker\.register\(\s*['"]tms-driver-sw\.js['"]\s*\)\.catch\(\(\)\s*=>\s*\{\}\);?\s*\}\s*<\/script>/i;
-if (!inlineSwPattern.test(driverHtml)) {
-  fail('no se encontró el bloque inline esperado de registro del Service Worker del operador', 53);
-}
-driverHtml = driverHtml.replace(inlineSwPattern, '<script src="tms-driver-sw-register.js"></script>');
-fs.writeFileSync(driverHtmlPath, driverHtml);
 
 // Bloqueos de regresión.
 const legacyDemo = containsTextRecursive(path.join(OUT, 'public'), 'XOLUM-DEMO');

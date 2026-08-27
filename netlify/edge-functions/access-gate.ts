@@ -41,10 +41,11 @@ export default async (request: Request) => {
     "/tienda/b2b/cotizaciones.html",
     "/tienda/b2b/autorizaciones.html",
   ].includes(url.pathname);
+  const isTms = url.pathname === "/tms" || url.pathname === "/tms/" || url.pathname === "/tms.html";
 
   // Esta Edge Function corre de forma global para usar una sola regla de Netlify,
   // pero sólo consulta la sesión cuando la ruta realmente requiere protección.
-  if (!isAdmin && !isB2B) return;
+  if (!isAdmin && !isB2B && !isTms) return;
 
   const user = await readSession(request, url);
 
@@ -53,6 +54,10 @@ export default async (request: Request) => {
   }
 
   if (isB2B && !B2B_ROLES.has(user?.role)) {
+    return loginRedirect(url);
+  }
+
+  if (isTms && !user) {
     return loginRedirect(url);
   }
 

@@ -54,7 +54,27 @@ status=status.replace(stale,current);
 if(!status.includes(current))fail('security-status no pudo alinearse con la cookie real',91);
 fs.writeFileSync(statusPath,status);
 
+// Separación estricta: ninguna demo TMS ni PWA de operador se publica desde XOLUM.WEB.
+const demoArtifacts=[
+  'public/tms-app.html',
+  'public/tms-core.js',
+  'public/tms.js',
+  'public/tms-driver.html',
+  'public/tms-driver.js',
+  'public/tms-driver-manifest.json',
+  'public/tms-driver-sw.js',
+  'public/tms-driver-sw-register.js',
+  'public/assets/tms',
+];
+for(const relative of demoArtifacts){
+  fs.rmSync(path.join(OUT,relative),{recursive:true,force:true});
+}
+for(const relative of demoArtifacts){
+  if(fs.existsSync(path.join(OUT,relative)))fail(`artefacto demo sobrevivió al hardening: ${relative}`,92);
+}
+
 console.log('Post-build hardening: allowed origins governed by Git');
 console.log('Post-build hardening: logout uses validated request origin');
 console.log('Post-build hardening: session SameSite=Lax; CSRF SameSite=Strict');
 console.log('Post-build hardening: security-status aligned');
+console.log('Post-build hardening: demos TMS excluidas del árbol público');
