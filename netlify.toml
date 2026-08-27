@@ -1,5 +1,5 @@
 [build]
-  command = "node tools/build-production.mjs && node tools/fix-security-status.mjs"
+  command = "node tools/build-production.mjs && node tools/post-build-hardening.mjs"
   publish = ".xolum-prod/public"
   edge_functions = "netlify/edge-functions"
 
