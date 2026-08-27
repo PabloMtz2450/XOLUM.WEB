@@ -1,0 +1,91 @@
+XOLUM ASSEMBLED PRODUCTION AUDIT
+AUDITED_SHA=b7b5a9bfc8ccb433d83958a761397f7e3e958609
+
+=== BRAND / LOGO / ICON CANDIDATES ===
+.xolum-prod/public/admin/assets/generated/catalogo-maestro-inline-1.js	1876 bytes
+.xolum-prod/public/admin/catalogo-maestro.html	2095 bytes
+.xolum-prod/public/assets/brand/XOLUM_Favicon.ico	71734 bytes
+.xolum-prod/public/assets/brand/XOLUM_Icon_512x512.png	100151 bytes
+.xolum-prod/public/assets/brand/XOLUM_Icon_64x64.png	6162 bytes
+.xolum-prod/public/assets/xolum-flat.svg	24365 bytes
+.xolum-prod/public/assets/xolum-light.svg	24365 bytes
+.xolum-prod/public/assets/xolum-metallic.svg	24365 bytes
+.xolum-prod/public/assets/xolum-symbol-metallic.svg	24365 bytes
+.xolum-prod/public/tienda/b2b/assets/catalogo_sellos_xolum.json	218602 bytes
+.xolum-prod/public/tienda/b2b/assets/generated/catalogo-inline-1.js	3895 bytes
+.xolum-prod/public/tienda/b2b/assets/xolum-symbol.svg	24365 bytes
+.xolum-prod/public/tienda/b2b/catalogo.html	2406 bytes
+
+=== PNG VALIDATION ===
+OK	.xolum-prod/public/assets/brand/XOLUM_Icon_512x512.png	512x512
+OK	.xolum-prod/public/assets/brand/XOLUM_Icon_64x64.png	64x64
+
+=== INLINE EVENT HANDLERS ===
+FILE .xolum-prod/public/admin/autorizaciones-admin.html COUNT=1
+  onclick=load()
+FILE .xolum-prod/public/admin/cotizaciones.html COUNT=1
+  onclick=load()
+FILE .xolum-prod/public/admin/crm.html COUNT=7
+  onclick=openProspect()
+  onclick=openContact()
+  onclick=prosDlg.close()
+  onclick=quickActivity()
+  onclick=prosDlg.close()
+  onclick=contactDlg.close()
+  onclick=contactDlg.close()
+FILE .xolum-prod/public/admin/inventario.html COUNT=1
+  onclick=load()
+FILE .xolum-prod/public/admin/proveedores.html COUNT=1
+  onclick=load()
+FILE .xolum-prod/public/tienda/b2b/store.html COUNT=12
+  onclick=showScreen('ordersScreen')
+  onclick=showScreen('configScreen')
+  onclick=recommend()
+  onclick=recommend()
+  onchange=state.content=this.value
+  onchange=state.shape=this.value
+  onchange=state.lines=Number(this.value)
+  onchange=state.intensive=this.value==='intensivo'
+  onclick=showScreen('designScreen')
+  onchange=this.files[0]&&cleanImage(this.files[0])
+  onclick=state.paymentType='contado';return false
+  onclick=state.paymentType='credito';return false
+TOTAL_INLINE_HANDLERS=23
+
+=== INLINE SCRIPT BLOCKS ===
+TOTAL_INLINE_SCRIPT_BLOCKS=0
+
+=== TOP-LEVEL PUBLIC FILES ===
+.xolum-prod/public/acceso-denegado.html
+.xolum-prod/public/admin/auditoria.html
+.xolum-prod/public/admin/autorizaciones-admin.html
+.xolum-prod/public/admin/b2b-accesos.html
+.xolum-prod/public/admin/catalogo-maestro.html
+.xolum-prod/public/admin/clientes-b2b.html
+.xolum-prod/public/admin/configuracion.html
+.xolum-prod/public/admin/cotizaciones.html
+.xolum-prod/public/admin/crm.html
+.xolum-prod/public/admin/index.html
+.xolum-prod/public/admin/inventario.html
+.xolum-prod/public/admin/listas-precios.html
+.xolum-prod/public/admin/pedidos.html
+.xolum-prod/public/admin/presupuestos.html
+.xolum-prod/public/admin/proveedores.html
+.xolum-prod/public/admin/reportes.html
+.xolum-prod/public/admin/seguridad.html
+.xolum-prod/public/assets/xolum-flat.svg
+.xolum-prod/public/assets/xolum-light.svg
+.xolum-prod/public/assets/xolum-metallic.svg
+.xolum-prod/public/assets/xolum-symbol-metallic.svg
+.xolum-prod/public/cuenta/pedidos.html
+.xolum-prod/public/index.html
+.xolum-prod/public/tienda/index.html
+.xolum-prod/public/tms-app.html
+.xolum-prod/public/tms-core.js
+.xolum-prod/public/tms-driver-manifest.json
+.xolum-prod/public/tms-driver-sw-register.js
+.xolum-prod/public/tms-driver-sw.js
+.xolum-prod/public/tms-driver.html
+.xolum-prod/public/tms-driver.js
+.xolum-prod/public/tms.html
+.xolum-prod/public/tms.js
